@@ -1,1 +1,3 @@
-This file was created by IntelliJ IDEA 12.1.1 for binding GitHub repository
+==JMeter-mail
+
+This is simple extensions of Apache Jmeter with support low-level protocols IMAP(S)/(S/L)MTP(S) based on org.apache.commons:net without oracle JavaMail shit:)
