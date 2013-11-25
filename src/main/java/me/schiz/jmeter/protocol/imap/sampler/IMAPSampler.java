@@ -17,12 +17,7 @@
  */
 package me.schiz.jmeter.protocol.imap.sampler;
 
-import java.io.IOException;
-import java.net.SocketException;
-import java.util.LinkedList;
-
 import me.schiz.jmeter.protocol.SessionStorage;
-
 import org.apache.commons.net.SocketClient;
 import org.apache.commons.net.imap.IMAPClient;
 import org.apache.commons.net.imap.IMAPCommand;
@@ -32,6 +27,10 @@ import org.apache.jmeter.samplers.Entry;
 import org.apache.jmeter.samplers.SampleResult;
 import org.apache.jorphan.logging.LoggingManager;
 import org.apache.log.Logger;
+
+import java.io.IOException;
+import java.net.SocketException;
+import java.util.LinkedList;
 
 /**
  * @author Epikhin Mikhail (epihin-m@yandex.ru)
@@ -46,6 +45,8 @@ public class IMAPSampler extends AbstractSampler{
     private static final Logger log = LoggingManager.getLoggerForClass();
     private static final long serialVersionUID = 2105827624749965416L;
 
+    private static final String RC_ERROR = "500";
+
     public static final String CLIENT = "IMAPSampler.client";
     public static final String OPERATION = "IMAPSampler.operation";
     public static final String COMMAND = "IMAPSampler.command";
@@ -59,6 +60,7 @@ public class IMAPSampler extends AbstractSampler{
     public static final String TCP_NODELAY = "IMAPSampler.tcp_nodelay";
     public static final String CLIENT_NAME = "IMAPSampler.client_name";
     public static final String CLIENT_PASSWORD = "IMAPSampler.client_password";
+    public static final String CHECK_SUCCESSFUL = "IMAPSampler.check_successful";
 
     public static final LinkedList<String> operations = new LinkedList<String>();
     public static final LinkedList<String> commands = new LinkedList<String>();
@@ -161,6 +163,12 @@ public class IMAPSampler extends AbstractSampler{
     public void setUseSSL(boolean use) {
         setProperty(USE_SSL, use);
     }
+    public boolean getCheckSuccessful() {
+        return getPropertyAsBoolean(CHECK_SUCCESSFUL);
+    }
+    public void setCheckSuccessful(boolean check) {
+        setProperty(CHECK_SUCCESSFUL, check);
+    }
     @Override
     public SampleResult sample(Entry e) {
         SampleResult sr = new SampleResult();
@@ -198,7 +206,9 @@ public class IMAPSampler extends AbstractSampler{
             client.setConnectTimeout(getConnectionTimeout());
             client.connect(getHostname(), getPort());
             if(client.isConnected()) {
-                SessionStorage.getInstance().putClient(getSOClient(), client);
+                SessionStorage.proto_type protoType = SessionStorage.proto_type.PLAIN;
+                if(getUseSSL()) protoType = SessionStorage.proto_type.SSL;
+                SessionStorage.getInstance().putClient(getSOClient(), client, protoType);
                 client.setSoTimeout(getSoTimeout());
                 sr.setSuccessful(true);
                 sr.setResponseCodeOK();
@@ -252,8 +262,9 @@ public class IMAPSampler extends AbstractSampler{
                     sr.setResponseCode(e.getClass().getName());
                     log.error("client `" + getClient() + "` ", e);
                     removeClient();
+                } finally {
+                    sr.sampleEnd();
                 }
-                sr.sampleEnd();
             }
         }
         return sr;
@@ -275,11 +286,13 @@ public class IMAPSampler extends AbstractSampler{
                 sr.sampleStart();
                 try {
                     success = client.noop();
-                    sr.setSuccessful(success);
-                    if(success) sr.setResponseCodeOK();
-                    else {
-                        log.warn("5xx, " + client.getReplyString());
-                        sr.setResponseCode("500");
+                    if(getCheckSuccessful()) {
+                        sr.setSuccessful(success);
+                        if(success) sr.setResponseCodeOK();
+                        else    sr.setResponseCode(RC_ERROR);
+                    } else {
+                        sr.setSuccessful(true);
+                        sr.setResponseCodeOK();
                     }
                     sr.setResponseData(client.getReplyString().getBytes());
                 } catch (IOException e) {
@@ -313,11 +326,11 @@ public class IMAPSampler extends AbstractSampler{
                 try {
                     success = client.login(getClientName(), getClientPassword());
                     sr.setSuccessful(success);
-                    if(success) sr.setResponseCodeOK();
-                    else {
-                        sr.setResponseCode("500");
-                        log.warn("5xx, " + client.getReplyString());
-                    }
+                    if(getCheckSuccessful()) {
+                        sr.setSuccessful(success);
+                        if(success) sr.setResponseCodeOK();
+                        else    sr.setResponseCode(RC_ERROR);
+                    } else sr.setResponseCodeOK();
                     sr.setResponseData(client.getReplyString().getBytes());
                 } catch (IOException e) {
                     sr.setSuccessful(false);
@@ -350,11 +363,11 @@ public class IMAPSampler extends AbstractSampler{
                 try {
                     success = client.logout();
                     sr.setSuccessful(success);
-                    if(success) sr.setResponseCodeOK();
-                    else {
-                        sr.setResponseCode("500");
-                        log.warn("5xx, " + client.getReplyString());
-                    }
+                    if(getCheckSuccessful()) {
+                        sr.setSuccessful(success);
+                        if(success) sr.setResponseCodeOK();
+                        else    sr.setResponseCode(RC_ERROR);
+                    } else sr.setResponseCodeOK();
                     sr.setResponseData(client.getReplyString().getBytes());
                 } catch (IOException e) {
                     sr.setSuccessful(false);
@@ -392,11 +405,11 @@ public class IMAPSampler extends AbstractSampler{
                         success = client.doCommand(IMAPCommand.valueOf(getCommand()), getCommandArgs());
                     }
                     sr.setSuccessful(success);
-                    if(success)  sr.setResponseCodeOK();
-                    else {
-                        sr.setResponseCode("500");
-                        log.warn("5xx, " + client.getReplyString());
-                    }
+                    if(getCheckSuccessful()) {
+                        sr.setSuccessful(success);
+                        if(success) sr.setResponseCodeOK();
+                        else    sr.setResponseCode(RC_ERROR);
+                    } else sr.setResponseCodeOK();
                     sr.setResponseData(client.getReplyString().getBytes());
                 } catch (IOException e) {
                     sr.setSuccessful(false);
@@ -429,11 +442,11 @@ public class IMAPSampler extends AbstractSampler{
                 try {
                     success = client.capability();
                     sr.setSuccessful(success);
-                    if(success) sr.setResponseCodeOK();
-                    else {
-                        sr.setResponseCode("500");
-                        log.warn("5xx, " + client.getReplyString());
-                    }
+                    if(getCheckSuccessful()) {
+                        sr.setSuccessful(success);
+                        if(success) sr.setResponseCodeOK();
+                        else    sr.setResponseCode(RC_ERROR);
+                    } else sr.setResponseCodeOK();
                     sr.setResponseData(client.getReplyString().getBytes());
                 } catch (IOException e) {
                     sr.setSuccessful(false);
@@ -455,8 +468,16 @@ public class IMAPSampler extends AbstractSampler{
         sr.sampleEnd();
     }
     private void removeClient() {
-        SessionStorage.getInstance().removeClient(getSOClient());
-        log.error("session `" + getClient() + "` removed from pool");
+		SocketClient socketClient = SessionStorage.getInstance().getClient(getSOClient());
+		try {
+			socketClient.disconnect();
+		} catch (IOException e) {
+			log.error("can't disconnect session `" + getClient() + "`", e);
+		}
+		finally {
+			SessionStorage.getInstance().removeClient(getSOClient());
+			log.error("session `" + getClient() + "` removed from pool");
+		}
     }
 }
  

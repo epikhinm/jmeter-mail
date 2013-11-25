@@ -17,23 +17,12 @@
  */
 package me.schiz.jmeter.protocol.smtp.gui;
 
-import java.awt.BorderLayout;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-
-import javax.swing.BorderFactory;
-import javax.swing.JCheckBox;
-import javax.swing.JComboBox;
-import javax.swing.JComponent;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JTextArea;
-import javax.swing.JTextField;
-
 import me.schiz.jmeter.protocol.smtp.sampler.SMTPSampler;
-
 import org.apache.jmeter.samplers.gui.AbstractSamplerGui;
 import org.apache.jmeter.testelement.TestElement;
+
+import javax.swing.*;
+import java.awt.*;
 
 /**
  * @author Epikhin Mikhail (epihin-m@yandex.ru)
@@ -64,6 +53,7 @@ public class SMTPSamplerGUI extends AbstractSamplerGui {
     private JTextField      tfSoTimeout;
     private JTextField      tfConnectionTimeout;
     private JCheckBox       cbUseSSL;
+    private JCheckBox       cbUseSTARTTLS;
     private JCheckBox       cbTcpNoDelay;
 
     public SMTPSamplerGUI() {
@@ -113,7 +103,10 @@ public class SMTPSamplerGUI extends AbstractSamplerGui {
             this.tfDefaultTimeout.setText("" + cs.getPropertyAsInt(SMTPSampler.DEFAULT_TIMEOUT));
             this.tfSoTimeout.setText("" + cs.getPropertyAsInt(SMTPSampler.SO_TIMEOUT));
             this.tfConnectionTimeout.setText("" + cs.getPropertyAsInt(SMTPSampler.CONNECTION_TIMEOUT));
-            this.cbUseSSL.setSelected(cs.getPropertyAsBoolean(SMTPSampler.USE_SSL));
+            //this.cbUseSSL.setSelected(cs.getPropertyAsBoolean(SMTPSampler.USE_SSL));
+            //this.cbUseSTARTTLS.setSelected(cs.getPropertyAsBoolean(SMTPSampler.USE_STARTTLS));
+            this.cbUseSSL.setSelected(cs.getUseSSL());
+            this.cbUseSTARTTLS.setSelected(cs.getUseSTARTTLS());
             this.cbTcpNoDelay.setSelected(cs.getPropertyAsBoolean(SMTPSampler.TCP_NODELAY));
         }
     }
@@ -138,6 +131,7 @@ public class SMTPSamplerGUI extends AbstractSamplerGui {
             smtpSampler.setSoTimeout(Integer.parseInt(tfSoTimeout.getText()));
             smtpSampler.setConnectionTimeout(Integer.parseInt(tfConnectionTimeout.getText()));
             smtpSampler.setUseSSL(cbUseSSL.isSelected());
+            smtpSampler.setUseSTARTTLS(cbUseSTARTTLS.isSelected());
             smtpSampler.setTcpNoDelay(cbTcpNoDelay.isSelected());
 
             String curOp = cbOperation.getSelectedItem().toString();
@@ -170,7 +164,8 @@ public class SMTPSamplerGUI extends AbstractSamplerGui {
         this.tfDefaultTimeout.setText("3000");
         this.tfConnectionTimeout.setText("1000");
         this.tfSoTimeout.setText("1000");
-        this.cbUseSSL.setSelected(true);
+        this.cbUseSSL.setSelected(false);
+        this.cbUseSTARTTLS.setSelected(false);
         this.cbTcpNoDelay.setSelected(true);
     }
     private void init() {
@@ -229,6 +224,7 @@ public class SMTPSamplerGUI extends AbstractSamplerGui {
         addToPanel(jpServerPanel, editConstraints, 3, 0, tfPort = new JTextField(5));
         addToPanel(jpServerPanel, editConstraints, 3, 1, cbUseSSL = new JCheckBox("SSL"));
         addToPanel(jpServerPanel, editConstraints, 3, 2, cbTcpNoDelay = new JCheckBox("TCP_NODELAY"));
+        addToPanel(jpServerPanel, editConstraints, 3, 3, cbUseSTARTTLS = new JCheckBox("STARTTLS"));
         addToPanel(jpServerPanel, labelConstraints, 0, 1, new JLabel("Default Timeout: ", JLabel.LEFT));
         addToPanel(jpServerPanel, editConstraints, 1, 1, tfDefaultTimeout = new JTextField(5));
         addToPanel(jpServerPanel, labelConstraints, 0, 2, new JLabel("Socket Timeout: ", JLabel.LEFT));
@@ -266,6 +262,7 @@ public class SMTPSamplerGUI extends AbstractSamplerGui {
         tfSoTimeout.setEnabled(enabled);
         tfConnectionTimeout.setEnabled(enabled);
         cbUseSSL.setEnabled(enabled);
+        cbUseSTARTTLS.setEnabled(enabled);
         cbTcpNoDelay.setEnabled(enabled);
     }
 }

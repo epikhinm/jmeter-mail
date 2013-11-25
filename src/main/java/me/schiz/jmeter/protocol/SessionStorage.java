@@ -17,18 +17,13 @@
  */
 package me.schiz.jmeter.protocol;
 
-import java.io.BufferedOutputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
-import java.io.UnsupportedEncodingException;
-import java.util.concurrent.ConcurrentHashMap;
-
 import org.apache.commons.net.PrintCommandListener;
 import org.apache.commons.net.SocketClient;
 import org.apache.jorphan.logging.LoggingManager;
 import org.apache.log.Logger;
+
+import java.io.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @author Epikhin Mikhail (epihin-m@yandex.ru)
@@ -40,6 +35,13 @@ public class SessionStorage {
     private static SessionStorage instance = null;
     private ConcurrentHashMap<String, SocketClient> map = null;
     private ConcurrentHashMap<String, PrintWriter> logMap = null;
+    private ConcurrentHashMap<String, proto_type> protoTypeMap = null;
+
+    public enum proto_type {
+        PLAIN,
+        SSL,
+        STARTTLS
+    }
 
     public enum PROTOCOL {
         IMAP, POP3, SMTP
@@ -47,6 +49,7 @@ public class SessionStorage {
 
     public SessionStorage() {
         map = new ConcurrentHashMap<String, SocketClient>();
+        protoTypeMap = new ConcurrentHashMap<String, proto_type>();
     }
 
     public static SessionStorage getInstance() {
@@ -61,9 +64,15 @@ public class SessionStorage {
         return map.get(client);
     }
 
-    public void putClient(String client, SocketClient imapClient) {
+    public proto_type getClientType(String client) {
+        log.debug("get client `" + client + "`");
+        return protoTypeMap.get(client);
+    }
+
+    public void putClient(String client, SocketClient imapClient, proto_type type) {
         map.put(client, imapClient);
-        log.debug("put client `" + client + "`");
+        protoTypeMap.put(client, type);
+        log.debug("put client `" + client + "` with type " + type);
     }
 
     public void removeClient(String client) {

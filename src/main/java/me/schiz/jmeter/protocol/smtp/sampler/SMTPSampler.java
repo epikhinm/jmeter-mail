@@ -17,12 +17,7 @@
  */
 package me.schiz.jmeter.protocol.smtp.sampler;
 
-import java.io.IOException;
-import java.net.SocketException;
-import java.util.LinkedList;
-
 import me.schiz.jmeter.protocol.SessionStorage;
-
 import org.apache.commons.net.SocketClient;
 import org.apache.commons.net.smtp.SMTPClient;
 import org.apache.commons.net.smtp.SMTPReply;
@@ -32,6 +27,10 @@ import org.apache.jmeter.samplers.Entry;
 import org.apache.jmeter.samplers.SampleResult;
 import org.apache.jorphan.logging.LoggingManager;
 import org.apache.log.Logger;
+
+import java.io.IOException;
+import java.net.SocketException;
+import java.util.LinkedList;
 
 /**
  * @author Epikhin Mikhail (epihin-m@yandex.ru)
@@ -56,6 +55,7 @@ public class SMTPSampler extends AbstractSampler{
     public static final String SO_TIMEOUT = "SMTPSampler.so_timeout";
     public static final String CONNECTION_TIMEOUT = "SMTPSampler.connection_timeout";
     public static final String USE_SSL = "SMTPSampler.use_ssl";
+    public static final String USE_STARTTLS = "SMTPSampler.use_starttls";
     public static final String TCP_NODELAY = "SMTPSampler.tcp_nodelay";
 
 
@@ -133,6 +133,12 @@ public class SMTPSampler extends AbstractSampler{
     public void setUseSSL(boolean use) {
         setProperty(USE_SSL, use);
     }
+    public boolean getUseSTARTTLS() {
+        return getPropertyAsBoolean(USE_STARTTLS);
+    }
+    public void setUseSTARTTLS(boolean use) {
+        setProperty(USE_STARTTLS, use);
+    }
     @Override
     public SampleResult sample(Entry e) {
         SampleResult sr = new SampleResult();
@@ -153,6 +159,8 @@ public class SMTPSampler extends AbstractSampler{
 
         if(getUseSSL()) {
             client = new SMTPSClient(true);
+        } else if(getUseSTARTTLS()) {
+            client = new SMTPSClient(false);
         } else {
             client = new SMTPClient();
         }
@@ -164,6 +172,10 @@ public class SMTPSampler extends AbstractSampler{
             request += "Connect Timeout : " + getConnectionTimeout() + "\n";
             request += "So Timeout : " + getSoTimeout() + "\n";
             request += "Client : " + getClient() + "\n";
+            if(getUseSSL()) request += "SSL : true\n";
+            else request += "SSL : false\n";
+            if(getUseSTARTTLS())    request += "STARTTLS : true\n";
+            else request += "STARTTLS : false\n";
 
             sr.setRequestHeaders(request);
             sr.sampleStart();
@@ -171,13 +183,17 @@ public class SMTPSampler extends AbstractSampler{
             client.setConnectTimeout(getConnectionTimeout());
             client.connect(getHostname(), getPort());
             if(client.isConnected()) {
-                SessionStorage.getInstance().putClient(getSOClient(), client);
+                SessionStorage.proto_type protoType = SessionStorage.proto_type.PLAIN;
+                if(getUseSSL() && !getUseSTARTTLS()) protoType = SessionStorage.proto_type.SSL;
+                if(!getUseSSL() && getUseSTARTTLS()) protoType = SessionStorage.proto_type.STARTTLS;
+
+                SessionStorage.getInstance().putClient(getSOClient(), client, protoType);
                 client.setSoTimeout(getSoTimeout());
+                client.setTcpNoDelay(getTcpNoDelay());
                 sr.setResponseCode(String.valueOf(client.getReplyCode()));
                 sr.setResponseData(client.getReplyString().getBytes());
                 setSuccessfulByResponseCode(sr, client.getReplyCode());
             }
-            sr.sampleEnd();
         } catch (SocketException se) {
             sr.setResponseMessage(se.toString());
             sr.setSuccessful(false);
@@ -189,6 +205,7 @@ public class SMTPSampler extends AbstractSampler{
             sr.setResponseCode(ioe.getClass().getName());
             log.error("client `" + client + "` ", ioe);
         }
+        sr.sampleEnd();
         return sr;
     }
     private SampleResult sampleDisconnect(SampleResult sr) {
@@ -274,8 +291,28 @@ public class SMTPSampler extends AbstractSampler{
                     responseCode = client.sendCommand(getCommand());
                     sr.setResponseCode(String.valueOf(responseCode));
                     sr.setSuccessful(SMTPReply.isPositiveIntermediate(responseCode));
-                    sr.setResponseData(client.getReplyString().getBytes());
+                    String response = client.getReplyString();
                     setSuccessfulByResponseCode(sr, client.getReplyCode());
+
+                    if(SessionStorage.getInstance().getClientType(getSOClient()) == SessionStorage.proto_type.STARTTLS) {
+                        String command;
+                        if(getCommand().indexOf(' ') != -1) command = getCommand().substring(0, getCommand().indexOf(' '));
+                        else command = getCommand();
+                        if((command.equalsIgnoreCase("lhlo") || command.equalsIgnoreCase("ehlo") || command.equalsIgnoreCase("helo")) &&
+                                getUseSTARTTLS() && client instanceof SMTPSClient) {
+                            SMTPSClient sclient = (SMTPSClient)client;
+                            if(sclient.execTLS() == false) {
+                                sr.setSuccessful(false);
+                                sr.setResponseCode("403");;
+                                response += sclient.getReplyString();
+                                log.error("client `" + client + "` STARTTLS failed");
+                                removeClient();
+                            } else {
+                                response += "\nSTARTTLS OK";
+                            }
+                        }
+                    }
+                    sr.setResponseData(response.getBytes());
                 } catch (IOException e) {
                     sr.setSuccessful(false);
                     sr.setResponseData(e.toString().getBytes());
@@ -336,6 +373,11 @@ public class SMTPSampler extends AbstractSampler{
         sr.sampleEnd();
     }
     private void removeClient() {
+        try {
+            SessionStorage.getInstance().getClient(getSOClient()).disconnect();
+        } catch (IOException e) {
+            log.warn("Cannot disconnect client `" + getSOClient() + "` " , e);
+        }
         SessionStorage.getInstance().removeClient(getSOClient());
         log.warn("session `" + getClient() + "` removed from pool");
     }

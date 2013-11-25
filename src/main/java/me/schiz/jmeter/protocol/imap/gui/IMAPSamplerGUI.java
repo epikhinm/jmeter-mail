@@ -56,8 +56,9 @@ public class IMAPSamplerGUI extends AbstractSamplerGui {
 
     //Command panel
     private JPanel          jpCommandPanel;
-    private JComboBox   cbCommand;
+    private JComboBox       cbCommand;
     private JTextArea       taCommandArgs;
+    private JCheckBox       cbCheckSuccessful;
 
     //Server settings
     private JPanel          jpServerPanel;
@@ -115,6 +116,7 @@ public class IMAPSamplerGUI extends AbstractSamplerGui {
             //Command panel
             this.cbCommand.setSelectedItem(cs.getPropertyAsString(IMAPSampler.COMMAND));
             this.taCommandArgs.setText(cs.getPropertyAsString(IMAPSampler.COMMAND_ARGS));
+            this.cbCheckSuccessful.setSelected(cs.getPropertyAsBoolean(IMAPSampler.CHECK_SUCCESSFUL));
 
             //Server settings
             this.tfHostname.setText(cs.getPropertyAsString(IMAPSampler.HOSTNAME));
@@ -144,6 +146,7 @@ public class IMAPSamplerGUI extends AbstractSamplerGui {
             //Command panel
             imapSampler.setCommand((String)cbCommand.getSelectedItem());
             imapSampler.setCommandArgs(taCommandArgs.getText());
+            imapSampler.setCheckSuccessful(cbCheckSuccessful.isSelected());
 
             //Server settings
             imapSampler.setHostname(tfHostname.getText());
@@ -189,6 +192,7 @@ public class IMAPSamplerGUI extends AbstractSamplerGui {
         //Command panel
         this.cbCommand.setSelectedItem((String)"NOOP");
         this.taCommandArgs.setText("");
+        this.cbCheckSuccessful.setSelected(false);
 
         //Server settings
         this.tfHostname.setText("127.0.0.1");
@@ -244,6 +248,7 @@ public class IMAPSamplerGUI extends AbstractSamplerGui {
                 BorderFactory.createEtchedBorder(),
                 "Command")); // $NON-NLS-1$
         addToPanel(jpCommandPanel, labelConstraints, 0, 0, cbCommand = new JComboBox(IMAPSampler.commands.toArray(new String[]{})));
+        addToPanel(jpCommandPanel, labelConstraints, 1, 0, cbCheckSuccessful = new JCheckBox("Check Successful"));
         addToPanel(jpCommandPanel, editConstraints, 1, 0, taCommandArgs = new JTextArea());
         taCommandArgs.setColumns(32);
         taCommandArgs.setRows(4);
