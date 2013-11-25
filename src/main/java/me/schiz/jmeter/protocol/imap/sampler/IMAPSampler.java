@@ -17,6 +17,7 @@
  */
 package me.schiz.jmeter.protocol.imap.sampler;
 
+import me.schiz.jmeter.protocol.Session;
 import me.schiz.jmeter.protocol.SessionStorage;
 import org.apache.commons.net.SocketClient;
 import org.apache.commons.net.imap.IMAPClient;
@@ -83,7 +84,7 @@ public class IMAPSampler extends AbstractSampler{
         }
     }
     public String getSOClient() {
-        return SessionStorage.PROTOCOL.IMAP + getClient();
+        return Session._protocol.IMAP + getClient();
     }
     public String getClient() {
         return getPropertyAsString(CLIENT);
@@ -206,9 +207,9 @@ public class IMAPSampler extends AbstractSampler{
             client.setConnectTimeout(getConnectionTimeout());
             client.connect(getHostname(), getPort());
             if(client.isConnected()) {
-                SessionStorage.proto_type protoType = SessionStorage.proto_type.PLAIN;
-                if(getUseSSL()) protoType = SessionStorage.proto_type.SSL;
-                SessionStorage.getInstance().putClient(getSOClient(), client, protoType);
+                Session._encryption encryption = Session._encryption.PLAIN;
+                if(getUseSSL()) encryption = Session._encryption.SSL;
+                SessionStorage.getInstance().putClient(getSOClient(), client, encryption, Session._protocol.IMAP);
                 client.setSoTimeout(getSoTimeout());
                 sr.setSuccessful(true);
                 sr.setResponseCodeOK();
@@ -237,7 +238,7 @@ public class IMAPSampler extends AbstractSampler{
         return sr;
     }
     private SampleResult sampleDisconnect(SampleResult sr) {
-        SocketClient soclient = SessionStorage.getInstance().getClient( getSOClient());
+        SocketClient soclient = SessionStorage.getInstance().getClient( getSOClient()).socketClient;
         IMAPClient client = null;
         if(soclient instanceof IMAPClient) client = (IMAPClient) soclient;
 
@@ -270,7 +271,7 @@ public class IMAPSampler extends AbstractSampler{
         return sr;
     }
     private SampleResult sampleNoop(SampleResult sr) {
-        SocketClient soclient = SessionStorage.getInstance().getClient(getSOClient());
+        SocketClient soclient = SessionStorage.getInstance().getClient(getSOClient()).socketClient;
         IMAPClient client = null;
         if(soclient instanceof IMAPClient) client = (IMAPClient) soclient;
 
@@ -308,7 +309,7 @@ public class IMAPSampler extends AbstractSampler{
         return sr;
     }
     private SampleResult sampleLogin(SampleResult sr) {
-        SocketClient soclient = SessionStorage.getInstance().getClient(getSOClient());
+        SocketClient soclient = SessionStorage.getInstance().getClient(getSOClient()).socketClient;
         IMAPClient client = null;
         if(soclient instanceof IMAPClient) client = (IMAPClient) soclient;
 
@@ -345,7 +346,7 @@ public class IMAPSampler extends AbstractSampler{
         return sr;
     }
     private SampleResult sampleLogout(SampleResult sr) {
-        SocketClient soclient = SessionStorage.getInstance().getClient(getSOClient());
+        SocketClient soclient = SessionStorage.getInstance().getClient(getSOClient()).socketClient;
         IMAPClient client = null;
         if(soclient instanceof IMAPClient) client = (IMAPClient) soclient;
 
@@ -382,7 +383,7 @@ public class IMAPSampler extends AbstractSampler{
         return sr;
     }
     private SampleResult sampleCommand(SampleResult sr) {
-        SocketClient soclient = SessionStorage.getInstance().getClient(getSOClient());
+        SocketClient soclient = SessionStorage.getInstance().getClient(getSOClient()).socketClient;
         IMAPClient client = null;
         if(soclient instanceof IMAPClient) client = (IMAPClient) soclient;
 
@@ -424,7 +425,7 @@ public class IMAPSampler extends AbstractSampler{
         return sr;
     }
     private SampleResult sampleCapability(SampleResult sr) {
-        SocketClient soclient = SessionStorage.getInstance().getClient(getSOClient());
+        SocketClient soclient = SessionStorage.getInstance().getClient(getSOClient()).socketClient;
         IMAPClient client = null;
         if(soclient instanceof IMAPClient) client = (IMAPClient) soclient;
 
@@ -468,7 +469,7 @@ public class IMAPSampler extends AbstractSampler{
         sr.sampleEnd();
     }
     private void removeClient() {
-		SocketClient socketClient = SessionStorage.getInstance().getClient(getSOClient());
+		SocketClient socketClient = SessionStorage.getInstance().getClient(getSOClient()).socketClient;
 		try {
 			socketClient.disconnect();
 		} catch (IOException e) {
