@@ -64,6 +64,7 @@ public class IMAPSamplerGUI extends AbstractSamplerGui {
     private JPanel          jpServerPanel;
     private JTextField      tfHostname;
     private JTextField      tfPort;
+	private JTextField		tfLocalAddress;
     private JTextField      tfDefaultTimeout;
     private JTextField      tfSoTimeout;
     private JTextField      tfConnectionTimeout;
@@ -120,7 +121,8 @@ public class IMAPSamplerGUI extends AbstractSamplerGui {
 
             //Server settings
             this.tfHostname.setText(cs.getPropertyAsString(IMAPSampler.HOSTNAME));
-            this.tfPort.setText("" + cs.getPropertyAsInt(IMAPSampler.PORT));
+            this.tfPort.setText(String.valueOf(cs.getPropertyAsInt(IMAPSampler.PORT)));
+			this.tfLocalAddress.setText(cs.getLocalAddr());
             this.tfDefaultTimeout.setText("" + cs.getPropertyAsInt(IMAPSampler.DEFAULT_TIMEOUT));
             this.tfSoTimeout.setText("" + cs.getPropertyAsInt(IMAPSampler.SO_TIMEOUT));
             this.tfConnectionTimeout.setText("" + cs.getPropertyAsInt(IMAPSampler.CONNECTION_TIMEOUT));
@@ -151,6 +153,7 @@ public class IMAPSamplerGUI extends AbstractSamplerGui {
             //Server settings
             imapSampler.setHostname(tfHostname.getText());
             imapSampler.setPort(Integer.parseInt(tfPort.getText()));
+			imapSampler.setLocalAddr(tfLocalAddress.getText());
             imapSampler.setDefaultTimeout(Integer.parseInt(tfDefaultTimeout.getText()));
             imapSampler.setSoTimeout(Integer.parseInt(tfSoTimeout.getText()));
             imapSampler.setConnectionTimeout(Integer.parseInt(tfConnectionTimeout.getText()));
@@ -197,6 +200,7 @@ public class IMAPSamplerGUI extends AbstractSamplerGui {
         //Server settings
         this.tfHostname.setText("127.0.0.1");
         this.tfPort.setText("143");
+		this.tfLocalAddress.setText("");
         this.tfDefaultTimeout.setText("2000");
         this.tfConnectionTimeout.setText("1000");
         this.tfSoTimeout.setText("2000");
@@ -264,8 +268,10 @@ public class IMAPSamplerGUI extends AbstractSamplerGui {
         addToPanel(jpServerPanel, editConstraints, 1, 0, tfHostname = new JTextField(20));
         addToPanel(jpServerPanel, labelConstraints, 2, 0, new JLabel("Port: ", JLabel.LEFT));
         addToPanel(jpServerPanel, editConstraints, 3, 0, tfPort = new JTextField(5));
-        addToPanel(jpServerPanel, editConstraints, 3, 1, cbUseSSL = new JCheckBox("SSL"));
-        addToPanel(jpServerPanel, editConstraints, 3, 2, cbTcpNoDelay = new JCheckBox("TCP_NODELAY"));
+		addToPanel(jpServerPanel, labelConstraints, 2, 1, new JLabel("LADDR:"));
+		addToPanel(jpServerPanel, editConstraints, 3, 1, tfLocalAddress = new JTextField(5));
+        addToPanel(jpServerPanel, editConstraints, 3, 2, cbUseSSL = new JCheckBox("SSL"));
+        addToPanel(jpServerPanel, editConstraints, 3, 3, cbTcpNoDelay = new JCheckBox("TCP_NODELAY"));
         addToPanel(jpServerPanel, labelConstraints, 0, 1, new JLabel("Default Timeout: ", JLabel.LEFT));
         addToPanel(jpServerPanel, editConstraints, 1, 1, tfDefaultTimeout = new JTextField(5));
         addToPanel(jpServerPanel, labelConstraints, 0, 2, new JLabel("Socket Timeout: ", JLabel.LEFT));
@@ -311,6 +317,7 @@ public class IMAPSamplerGUI extends AbstractSamplerGui {
         jpServerPanel.setEnabled(enabled);
         tfHostname.setEnabled(enabled);
         tfPort.setEnabled(enabled);
+		tfLocalAddress.setEnabled(enabled);
         tfDefaultTimeout.setEnabled(enabled);
         tfSoTimeout.setEnabled(enabled);
         tfConnectionTimeout.setEnabled(enabled);

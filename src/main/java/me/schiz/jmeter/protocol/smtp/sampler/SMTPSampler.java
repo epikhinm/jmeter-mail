@@ -17,7 +17,6 @@
  */
 package me.schiz.jmeter.protocol.smtp.sampler;
 
-import me.schiz.jmeter.protocol.Session;
 import me.schiz.jmeter.protocol.SessionStorage;
 import org.apache.commons.net.SocketClient;
 import org.apache.commons.net.smtp.SMTPClient;
@@ -72,7 +71,7 @@ public class SMTPSampler extends AbstractSampler{
     }
 
     public String getSOClient() {
-        return Session._protocol.SMTP + getClient();
+        return SessionStorage.PROTOCOL.SMTP + getClient();
     }
     public String getClient() {
         return getPropertyAsString(CLIENT);
@@ -184,11 +183,11 @@ public class SMTPSampler extends AbstractSampler{
             client.setConnectTimeout(getConnectionTimeout());
             client.connect(getHostname(), getPort());
             if(client.isConnected()) {
-                Session._encryption encryption = Session._encryption.PLAIN;
-                if(getUseSSL() && !getUseSTARTTLS()) encryption = Session._encryption.SSL;
-                if(!getUseSSL() && getUseSTARTTLS()) encryption = Session._encryption.STARTTLS;
+                SessionStorage.proto_type protoType = SessionStorage.proto_type.PLAIN;
+                if(getUseSSL() && !getUseSTARTTLS()) protoType = SessionStorage.proto_type.SSL;
+                if(!getUseSSL() && getUseSTARTTLS()) protoType = SessionStorage.proto_type.STARTTLS;
 
-                SessionStorage.getInstance().putClient(getSOClient(), client, encryption, Session._protocol.SMTP);
+                SessionStorage.getInstance().putClient(getSOClient(), client, protoType);
                 client.setSoTimeout(getSoTimeout());
                 client.setTcpNoDelay(getTcpNoDelay());
                 sr.setResponseCode(String.valueOf(client.getReplyCode()));
@@ -210,7 +209,7 @@ public class SMTPSampler extends AbstractSampler{
         return sr;
     }
     private SampleResult sampleDisconnect(SampleResult sr) {
-        SocketClient soclient = SessionStorage.getInstance().getClient( getSOClient()).socketClient;
+        SocketClient soclient = SessionStorage.getInstance().getClient( getSOClient());
         SMTPClient client = null;
         if(soclient instanceof SMTPClient) client = (SMTPClient) soclient;
 
@@ -241,7 +240,7 @@ public class SMTPSampler extends AbstractSampler{
         return sr;
     }
     private SampleResult sampleNoop(SampleResult sr) {
-        SocketClient soclient = SessionStorage.getInstance().getClient(getSOClient()).socketClient;
+        SocketClient soclient = SessionStorage.getInstance().getClient(getSOClient());
         SMTPClient client = null;
         if(soclient instanceof SMTPClient) client = (SMTPClient) soclient;
 
@@ -271,7 +270,7 @@ public class SMTPSampler extends AbstractSampler{
         return sr;
     }
     private SampleResult sampleCommand(SampleResult sr) {
-        SocketClient soclient = SessionStorage.getInstance().getClient(getSOClient()).socketClient;
+        SocketClient soclient = SessionStorage.getInstance().getClient(getSOClient());
         SMTPClient client = null;
         int responseCode = 0;
         if(soclient instanceof SMTPClient) client = (SMTPClient) soclient;
@@ -295,7 +294,7 @@ public class SMTPSampler extends AbstractSampler{
                     String response = client.getReplyString();
                     setSuccessfulByResponseCode(sr, client.getReplyCode());
 
-                    if(SessionStorage.getInstance().getClient(getSOClient()).encryption == Session._encryption.STARTTLS) {
+                    if(SessionStorage.getInstance().getClientType(getSOClient()) == SessionStorage.proto_type.STARTTLS) {
                         String command;
                         if(getCommand().indexOf(' ') != -1) command = getCommand().substring(0, getCommand().indexOf(' '));
                         else command = getCommand();
@@ -327,7 +326,7 @@ public class SMTPSampler extends AbstractSampler{
         return sr;
     }
     private SampleResult sampleReset(SampleResult sr) {
-        SocketClient soclient = SessionStorage.getInstance().getClient(getSOClient()).socketClient;
+        SocketClient soclient = SessionStorage.getInstance().getClient(getSOClient());
         SMTPClient client = null;
         if(soclient instanceof SMTPClient) client = (SMTPClient) soclient;
 
@@ -375,7 +374,7 @@ public class SMTPSampler extends AbstractSampler{
     }
     private void removeClient() {
         try {
-            SessionStorage.getInstance().getClient(getSOClient()).socketClient.disconnect();
+            SessionStorage.getInstance().getClient(getSOClient()).disconnect();
         } catch (IOException e) {
             log.warn("Cannot disconnect client `" + getSOClient() + "` " , e);
         }

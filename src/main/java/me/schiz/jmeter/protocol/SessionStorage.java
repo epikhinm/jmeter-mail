@@ -32,54 +32,55 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class SessionStorage {
     private static final Logger log = LoggingManager.getLoggerForClass();
-    private static volatile SessionStorage instance = null;
-	private ConcurrentHashMap<String, Session>	sessionMap = null;
+    private static SessionStorage instance = null;
+    private ConcurrentHashMap<String, SocketClient> map = null;
+    private ConcurrentHashMap<String, PrintWriter> logMap = null;
+    private ConcurrentHashMap<String, proto_type> protoTypeMap = null;
+
+    public enum proto_type {
+        PLAIN,
+        SSL,
+        STARTTLS
+    }
+
+    public enum PROTOCOL {
+        IMAP, POP3, SMTP
+    }
 
     public SessionStorage() {
-		sessionMap = new ConcurrentHashMap<String, Session>();
+        map = new ConcurrentHashMap<String, SocketClient>();
+        protoTypeMap = new ConcurrentHashMap<String, proto_type>();
     }
 
     public static SessionStorage getInstance() {
-        if(instance == null) {
-			synchronized(SessionStorage.class) {
-				if(instance == null) instance = new SessionStorage();
-			}
-		}
-		return instance;
+        synchronized(SessionStorage.class) {
+            if(instance == null) instance = new SessionStorage();
+            return instance;
+        }
     }
 
-	public Session getClient(String client) {
-		log.debug("get client `" + client + "`");
-		return sessionMap.get(client);
-	}
+    public SocketClient getClient(String client) {
+        log.debug("get client `" + client + "`");
+        return map.get(client);
+    }
 
-    public void putClient(String client, SocketClient socketClient, Session._encryption encryption, Session._protocol protocol) {
-		Session session = new Session();
-		session.socketClient = socketClient;
-		session.protoctol = protocol;
-		session.encryption = encryption;
+    public proto_type getClientType(String client) {
+        log.debug("get client `" + client + "`");
+        return protoTypeMap.get(client);
+    }
 
-		sessionMap.put(client, session);
-        log.debug("put client `" + client + "` with protocol " + protocol);
+    public void putClient(String client, SocketClient imapClient, proto_type type) {
+        map.put(client, imapClient);
+        protoTypeMap.put(client, type);
+        log.debug("put client `" + client + "` with type " + type);
     }
 
     public void removeClient(String client) {
-
-		if(sessionMap.get(client).socketClient.isConnected()) {
-			try {
-				sessionMap.get(client).socketClient.disconnect();
-				log.warn("client `" + client + "`disconnected from session storage" );
-			} catch (IOException e) {
-				log.warn("can't disconnect client `" + client + "`", e);
-			}
-		}
-        sessionMap.remove(client);
+        map.remove(client);
         log.debug("remove client `" + client + "`");
     }
-
-	@Deprecated
     public void installLog(String client, String logPath) {
-        if(sessionMap.get(client) == null) {
+        if(map.get(client) == null) {
             log.warn("can't install log, because not found client `" + client + "`");
             return;
         }
@@ -87,9 +88,9 @@ public class SessionStorage {
             PrintWriter pw = new PrintWriter(new OutputStreamWriter(new BufferedOutputStream(new FileOutputStream(logPath,
                     false)), "UTF-8"), true);
 
-            //logMap.put(client, pw);
+            logMap.put(client, pw);
 
-            sessionMap.get(client).socketClient.addProtocolCommandListener(new PrintCommandListener(pw, true));
+            map.get(client).addProtocolCommandListener(new PrintCommandListener(pw, true));
         } catch (UnsupportedEncodingException e) {
             log.error("UTF-8 not supported", e);
         } catch (FileNotFoundException e) {

@@ -17,7 +17,6 @@
  */
 package me.schiz.jmeter.protocol.imap.sampler;
 
-import me.schiz.jmeter.protocol.Session;
 import me.schiz.jmeter.protocol.SessionStorage;
 import org.apache.commons.net.SocketClient;
 import org.apache.commons.net.imap.IMAPClient;
@@ -30,6 +29,7 @@ import org.apache.jorphan.logging.LoggingManager;
 import org.apache.log.Logger;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.SocketException;
 import java.util.LinkedList;
 
@@ -54,6 +54,7 @@ public class IMAPSampler extends AbstractSampler{
     public static final String COMMAND_ARGS = "IMAPSampler.command_args";
     public static final String HOSTNAME = "IMAPSampler.hostname";
     public static final String PORT = "IMAPSampler.port";
+	public static final String LOCAL_ADDR = "IMAPSampler.local_addr";
     public static final String DEFAULT_TIMEOUT = "IMAPSampler.default_timeout";
     public static final String SO_TIMEOUT = "IMAPSampler.so_timeout";
     public static final String CONNECTION_TIMEOUT = "IMAPSampler.connection_timeout";
@@ -84,7 +85,7 @@ public class IMAPSampler extends AbstractSampler{
         }
     }
     public String getSOClient() {
-        return Session._protocol.IMAP + getClient();
+        return SessionStorage.PROTOCOL.IMAP + getClient();
     }
     public String getClient() {
         return getPropertyAsString(CLIENT);
@@ -122,6 +123,12 @@ public class IMAPSampler extends AbstractSampler{
     public void setPort(int port) {
         setProperty(PORT, port);
     }
+	public String getLocalAddr() {
+		return getPropertyAsString(LOCAL_ADDR);
+	}
+	public void setLocalAddr(String localAddr) {
+		setProperty(LOCAL_ADDR, localAddr);
+	}
     public int getDefaultTimeout() {
         return getPropertyAsInt(DEFAULT_TIMEOUT);
     }
@@ -205,11 +212,13 @@ public class IMAPSampler extends AbstractSampler{
             sr.sampleStart();
             client.setDefaultTimeout(getDefaultTimeout());
             client.setConnectTimeout(getConnectionTimeout());
-            client.connect(getHostname(), getPort());
+            if(getLocalAddr().isEmpty()) client.connect(getHostname(), getPort());
+			else client.connect(getHostname(), getPort(), InetAddress.getByName(getLocalAddr()), 0);
             if(client.isConnected()) {
-                Session._encryption encryption = Session._encryption.PLAIN;
-                if(getUseSSL()) encryption = Session._encryption.SSL;
-                SessionStorage.getInstance().putClient(getSOClient(), client, encryption, Session._protocol.IMAP);
+				log.info("imap client " + getClient() + " connected from " + client.getLocalAddress() + ":" + client.getLocalPort());
+                SessionStorage.proto_type protoType = SessionStorage.proto_type.PLAIN;
+                if(getUseSSL()) protoType = SessionStorage.proto_type.SSL;
+                SessionStorage.getInstance().putClient(getSOClient(), client, protoType);
                 client.setSoTimeout(getSoTimeout());
                 sr.setSuccessful(true);
                 sr.setResponseCodeOK();
@@ -238,7 +247,7 @@ public class IMAPSampler extends AbstractSampler{
         return sr;
     }
     private SampleResult sampleDisconnect(SampleResult sr) {
-        SocketClient soclient = SessionStorage.getInstance().getClient( getSOClient()).socketClient;
+        SocketClient soclient = SessionStorage.getInstance().getClient( getSOClient());
         IMAPClient client = null;
         if(soclient instanceof IMAPClient) client = (IMAPClient) soclient;
 
@@ -271,7 +280,7 @@ public class IMAPSampler extends AbstractSampler{
         return sr;
     }
     private SampleResult sampleNoop(SampleResult sr) {
-        SocketClient soclient = SessionStorage.getInstance().getClient(getSOClient()).socketClient;
+        SocketClient soclient = SessionStorage.getInstance().getClient(getSOClient());
         IMAPClient client = null;
         if(soclient instanceof IMAPClient) client = (IMAPClient) soclient;
 
@@ -309,7 +318,7 @@ public class IMAPSampler extends AbstractSampler{
         return sr;
     }
     private SampleResult sampleLogin(SampleResult sr) {
-        SocketClient soclient = SessionStorage.getInstance().getClient(getSOClient()).socketClient;
+        SocketClient soclient = SessionStorage.getInstance().getClient(getSOClient());
         IMAPClient client = null;
         if(soclient instanceof IMAPClient) client = (IMAPClient) soclient;
 
@@ -346,7 +355,7 @@ public class IMAPSampler extends AbstractSampler{
         return sr;
     }
     private SampleResult sampleLogout(SampleResult sr) {
-        SocketClient soclient = SessionStorage.getInstance().getClient(getSOClient()).socketClient;
+        SocketClient soclient = SessionStorage.getInstance().getClient(getSOClient());
         IMAPClient client = null;
         if(soclient instanceof IMAPClient) client = (IMAPClient) soclient;
 
@@ -383,7 +392,7 @@ public class IMAPSampler extends AbstractSampler{
         return sr;
     }
     private SampleResult sampleCommand(SampleResult sr) {
-        SocketClient soclient = SessionStorage.getInstance().getClient(getSOClient()).socketClient;
+        SocketClient soclient = SessionStorage.getInstance().getClient(getSOClient());
         IMAPClient client = null;
         if(soclient instanceof IMAPClient) client = (IMAPClient) soclient;
 
@@ -425,7 +434,7 @@ public class IMAPSampler extends AbstractSampler{
         return sr;
     }
     private SampleResult sampleCapability(SampleResult sr) {
-        SocketClient soclient = SessionStorage.getInstance().getClient(getSOClient()).socketClient;
+        SocketClient soclient = SessionStorage.getInstance().getClient(getSOClient());
         IMAPClient client = null;
         if(soclient instanceof IMAPClient) client = (IMAPClient) soclient;
 
@@ -469,16 +478,8 @@ public class IMAPSampler extends AbstractSampler{
         sr.sampleEnd();
     }
     private void removeClient() {
-		SocketClient socketClient = SessionStorage.getInstance().getClient(getSOClient()).socketClient;
-		try {
-			socketClient.disconnect();
-		} catch (IOException e) {
-			log.error("can't disconnect session `" + getClient() + "`", e);
-		}
-		finally {
-			SessionStorage.getInstance().removeClient(getSOClient());
-			log.error("session `" + getClient() + "` removed from pool");
-		}
+        SessionStorage.getInstance().removeClient(getSOClient());
+        log.error("session `" + getClient() + "` removed from pool");
     }
 }
  
